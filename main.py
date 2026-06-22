@@ -53,7 +53,9 @@ def health():
 return {"ok": True}
 
 @app.get("/debug")
-def debug():
+@app.get("/health")
+def health():
+    return {"ok": True}
 return {
 "openai_loaded": bool(OPENAI_KEY),
 "groq_loaded": bool(GROQ_API_KEY),

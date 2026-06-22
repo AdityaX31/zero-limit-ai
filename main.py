@@ -33,7 +33,7 @@ HUGGINGFACE_API_KEY = os.getenv("HUGGINGFACE_API_KEY")
 cache = {}
 
 def hash_text(text: str):
-return hashlib.md5(text.encode()).hexdigest()
+    return hashlib.md5(text.encode()).hexdigest()
 
 # =========================
 

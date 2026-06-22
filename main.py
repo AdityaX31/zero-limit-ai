@@ -46,11 +46,11 @@ def health():
 @app.get("/debug")
 def debug():
     return {
-        "openai_loaded": bool(OPENAI_KEY),
-        "groq_loaded": bool(GROQ_API_KEY),
-        "gemini_loaded": bool(GEMINI_API_KEY),
-        "mistral_loaded": bool(MISTRAL_API_KEY),
-        "hf_loaded": bool(HUGGINGFACE_API_KEY)
+        "openai": bool(OPENAI_KEY),
+        "groq": bool(GROQ_API_KEY),
+        "gemini": bool(GEMINI_API_KEY),
+        "mistral": bool(MISTRAL_API_KEY),
+        "hf": bool(HUGGINGFACE_API_KEY)
     }
 
 # =========================
@@ -106,7 +106,9 @@ async def gemini_provider(prompt):
         r = await client.post(
             "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent",
             params={"key": GEMINI_API_KEY},
-            json={"contents": [{"parts": [{"text": prompt}]}]}
+            json={
+                "contents": [{"parts": [{"text": prompt}]}]
+            }
         )
         if r.status_code == 200:
             return r.json()["candidates"][0]["content"]["parts"][0]["text"]
@@ -139,7 +141,7 @@ async def hf_provider(prompt):
         raise Exception(r.text)
 
 # =========================
-# FASTEST
+# FASTEST ROUTER
 # =========================
 async def fastest(prompt, providers):
     tasks = [asyncio.create_task(p(prompt)) for p in providers]
@@ -161,7 +163,7 @@ async def fastest(prompt, providers):
     return None
 
 # =========================
-# ROUTER
+# ROUTER CORE
 # =========================
 async def router(prompt: str):
 
@@ -202,7 +204,7 @@ async def router(prompt: str):
     }
 
 # =========================
-# API
+# API ENDPOINT
 # =========================
 @app.post("/analyze")
 async def analyze(data: dict):

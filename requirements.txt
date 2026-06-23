@@ -2,6 +2,5 @@ fastapi
 uvicorn[standard]
 httpx
 python-dotenv
-python-multipart
-pillow
 pypdf
+python-multipart

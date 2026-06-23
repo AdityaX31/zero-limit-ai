@@ -3,20 +3,20 @@ from fastapi.middleware.cors import CORSMiddleware
 import httpx
 import os
 import io
-from dotenv import load_dotenv
 from pypdf import PdfReader
+from dotenv import load_dotenv
 
 load_dotenv()
 
-app = FastAPI(title="ZERO LIMIT AI", version="2.0")
+app = FastAPI(title="ZERO LIMIT AI STABLE", version="3.0")
 
 # =========================
-# CORS FIX (WAJIB UNTUK BOLT.NEW)
+# CORS FIX (BOLT READY)
 # =========================
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -38,24 +38,26 @@ def health():
 def home():
     return {"status": "running"}
 
-@app.get("/debug")
-def debug():
-    return {
-        "groq": bool(GROQ_KEY),
-        "remove_bg": bool(REMOVE_BG_KEY)
-    }
-
 # =========================
-# AI CORE (GROQ ONLY STABLE)
+# AI CORE (ANTI TOKEN OVERFLOW)
 # =========================
 async def ai(prompt: str):
+    prompt = prompt[:2000]  # 🔥 LIMIT GLOBAL ANTI ERROR
+
     async with httpx.AsyncClient(timeout=60) as client:
         r = await client.post(
             "https://api.groq.com/openai/v1/chat/completions",
             headers={"Authorization": f"Bearer {GROQ_KEY}"},
             json={
                 "model": "llama-3.1-8b-instant",
-                "messages": [{"role": "user", "content": prompt}]
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ],
+                "temperature": 0.2,
+                "max_tokens": 500   # 🔥 penting biar gak overflow
             }
         )
 
@@ -69,41 +71,54 @@ async def ai(prompt: str):
 # =========================
 @app.post("/typo-text")
 async def typo_text(data: dict):
-    text = data.get("text", "")
-    result = await ai(f"Fix grammar and typos:\n{text}")
+    text = (data.get("text", ""))[:2000]
+
+    result = await ai(
+        "Fix grammar & typos. Be short.\n"
+        "Return: corrected text + bullet mistakes.\n\n"
+        f"{text}"
+    )
+
     return {"result": result}
 
 # =========================
-# 2. REVIEW IMAGE (TEXT ONLY VERSION)
+# 2. REVIEW IMAGE (TEXT MODE)
 # =========================
 @app.post("/review-image")
 async def review_image(file: UploadFile = File(...)):
     _ = await file.read()
 
     result = await ai(
-        "You are a design expert. "
-        "Analyze design quality, layout, readability, and typo. "
-        "Give score 0-100 + suggestions."
+        "Analyze design. Be very short.\n"
+        "Return:\n- score (0-100)\n- 3 issues\n- 3 suggestions"
     )
 
     return {"result": result}
 
 # =========================
-# 3. BULK REVIEW
+# 3. BULK REVIEW (LIMITED)
 # =========================
 @app.post("/review-bulk")
 async def review_bulk(data: dict):
-    items = data.get("items", [])
+    items = data.get("items", [])[:5]  # 🔥 LIMIT BIAR GA OVERFLOW
 
     results = []
+
     for i in items:
-        r = await ai(f"Review this design text:\n{i}")
+        i = str(i)[:500]
+
+        r = await ai(
+            "Review design text briefly:\n"
+            "Give score + issue + suggestion.\n\n"
+            f"{i}"
+        )
+
         results.append(r)
 
     return {"results": results}
 
 # =========================
-# 4. PDF REVIEW
+# 4. PDF REVIEW (SAFE CHUNK)
 # =========================
 @app.post("/pdf-review")
 async def pdf_review(file: UploadFile = File(...)):
@@ -111,15 +126,19 @@ async def pdf_review(file: UploadFile = File(...)):
     pdf = PdfReader(io.BytesIO(content))
 
     text = ""
-    for page in pdf.pages:
-        text += page.extract_text() or ""
+    for page in pdf.pages[:5]:  # 🔥 max 5 pages
+        text += (page.extract_text() or "")
 
-    result = await ai(f"Fix typos and improve this text:\n{text[:3000]}")
+    text = text[:2000]
+
+    result = await ai(
+        "Fix grammar & improve text. Be short.\n\n" + text
+    )
 
     return {"result": result}
 
 # =========================
-# 5. REMOVE BACKGROUND
+# 5. REMOVE BG
 # =========================
 @app.post("/remove-background")
 async def remove_bg(file: UploadFile = File(...)):
@@ -134,6 +153,8 @@ async def remove_bg(file: UploadFile = File(...)):
         )
 
         if r.status_code == 200:
-            return {"image_base64": r.content.hex()}
+            return {
+                "image_base64": r.content.hex()
+            }
 
         return {"error": r.text}
